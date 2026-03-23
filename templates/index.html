@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NETPROBE v2.0 — Network & Web Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+
+  :root{
+    --navy:#0D1B2A; --card:#132338; --dark2:#1A2E40;
+    --cyan:#00B4D8; --lcyan:#90E0EF; --green:#2DC653;
+    --purple:#7B2D8B; --orange:#F77F00; --red:#E63946;
+    --white:#F0F4F8; --gray:#6C757D; --lgray:#DEE2E6;
+  }
+
+  body{
+    background:var(--navy); color:var(--white);
+    font-family:'Inter',sans-serif; min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* ── Header ── */
+  header{
+    background:var(--card); border-bottom:2px solid var(--cyan);
+    padding:0 2rem; display:flex; align-items:center;
+    justify-content:space-between; height:60px; position:sticky;
+    top:0; z-index:100;
+  }
+  .logo{
+    font-family:'JetBrains Mono',monospace; font-size:1.4rem;
+    font-weight:700; color:var(--white); letter-spacing:2px;
+  }
+  .logo span{color:var(--cyan);}
+  .badge{
+    background:rgba(0,180,216,.15); border:1px solid var(--cyan);
+    color:var(--cyan); font-size:.7rem; padding:.2rem .6rem;
+    border-radius:20px; font-family:'JetBrains Mono',monospace;
+    margin-left:.6rem;
+  }
+  .author{font-size:.8rem; color:var(--gray);}
+  .author span{color:var(--lcyan); font-weight:600;}
+
+  /* ── Hero ── */
+  .hero{
+    text-align:center; padding:3.5rem 2rem 2rem;
+    background:linear-gradient(180deg, var(--card) 0%, var(--navy) 100%);
+  }
+  .hero h1{
+    font-size:3rem; font-weight:700; letter-spacing:4px;
+    font-family:'JetBrains Mono',monospace;
+    background:linear-gradient(135deg,#fff 0%,var(--cyan) 60%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    margin-bottom:.5rem;
+  }
+  .hero p{color:var(--gray); font-size:.95rem; margin-bottom:2rem;}
+
+  /* ── Mode tabs ── */
+  .tabs{
+    display:flex; justify-content:center; gap:1rem; margin-bottom:2.5rem;
+  }
+  .tab{
+    padding:.6rem 2rem; border-radius:8px; cursor:pointer;
+    font-weight:600; font-size:.9rem; border:2px solid transparent;
+    transition:all .2s; letter-spacing:.5px;
+  }
+  .tab.host  { border-color:var(--cyan);   color:var(--cyan);   }
+  .tab.web   { border-color:var(--purple); color:var(--purple); }
+  .tab.host.active  { background:var(--cyan);   color:var(--navy); }
+  .tab.web.active   { background:var(--purple); color:#fff; }
+
+  /* ── Scanner box ── */
+  .scanner{
+    max-width:760px; margin:0 auto 3rem; padding:0 1.5rem;
+  }
+  .input-row{
+    display:flex; gap:.75rem; background:var(--card);
+    border:1px solid var(--dark2); border-radius:12px;
+    padding:.75rem 1rem; align-items:center;
+    box-shadow:0 4px 24px rgba(0,0,0,.3);
+  }
+  .input-row span{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--cyan); font-size:1rem; flex-shrink:0;
+  }
+  .input-row input{
+    flex:1; background:transparent; border:none; outline:none;
+    color:var(--white); font-family:'JetBrains Mono',monospace;
+    font-size:.95rem; caret-color:var(--cyan);
+  }
+  .input-row input::placeholder{color:var(--gray);}
+  .scan-btn{
+    padding:.5rem 1.6rem; border-radius:8px; border:none;
+    font-weight:700; cursor:pointer; font-size:.9rem;
+    transition:all .2s; letter-spacing:.5px; flex-shrink:0;
+  }
+  .scan-btn.host-btn { background:var(--cyan);   color:var(--navy); }
+  .scan-btn.web-btn  { background:var(--purple); color:#fff; }
+  .scan-btn:hover{transform:translateY(-1px); filter:brightness(1.1);}
+  .scan-btn:disabled{opacity:.5; cursor:not-allowed; transform:none;}
+
+  /* Quick targets */
+  .quick{
+    margin-top:.75rem; display:flex; gap:.5rem; flex-wrap:wrap;
+    align-items:center;
+  }
+  .quick span{font-size:.75rem; color:var(--gray);}
+  .quick-btn{
+    font-size:.75rem; padding:.2rem .7rem; border-radius:20px;
+    background:rgba(255,255,255,.05); border:1px solid var(--dark2);
+    color:var(--lgray); cursor:pointer; transition:all .2s;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .quick-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+
+  /* ── Loading ── */
+  .loading{
+    text-align:center; padding:3rem; display:none;
+  }
+  .spinner{
+    width:48px; height:48px; border:3px solid var(--dark2);
+    border-top-color:var(--cyan); border-radius:50%;
+    animation:spin .8s linear infinite; margin:0 auto 1rem;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading p{color:var(--gray); font-family:'JetBrains Mono',monospace; font-size:.85rem;}
+
+  /* ── Results ── */
+  .results{display:none; max-width:900px; margin:0 auto 4rem; padding:0 1.5rem;}
+
+  .section-title{
+    font-size:.7rem; font-weight:700; letter-spacing:2px;
+    color:var(--gray); text-transform:uppercase;
+    margin-bottom:.75rem; padding-bottom:.5rem;
+    border-bottom:1px solid var(--dark2);
+  }
+
+  /* Stat cards row */
+  .stat-row{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    gap:.75rem; margin-bottom:1.5rem;
+  }
+  .stat-card{
+    background:var(--card); border:1px solid var(--dark2);
+    border-radius:10px; padding:1rem; text-align:center;
+    border-top:3px solid var(--cyan);
+  }
+  .stat-card.green{ border-top-color:var(--green); }
+  .stat-card.purple{ border-top-color:var(--purple); }
+  .stat-card.orange{ border-top-color:var(--orange); }
+  .stat-label{font-size:.65rem; color:var(--gray); text-transform:uppercase; letter-spacing:1px; margin-bottom:.3rem;}
+  .stat-value{font-size:1.4rem; font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--white);}
+  .stat-value.alive{color:var(--green);}
+  .stat-value.dead{color:var(--red);}
+
+  /* Info grid */
+  .info-grid{
+    background:var(--card); border:1px solid var(--dark2);
+    border-radius:10px; overflow:hidden; margin-bottom:1.5rem;
+  }
+  .info-row{
+    display:flex; border-bottom:1px solid var(--dark2);
+    align-items:flex-start;
+  }
+  .info-row:last-child{border-bottom:none;}
+  .info-key{
+    min-width:160px; padding:.6rem 1rem; font-size:.8rem;
+    font-weight:600; color:var(--lcyan); background:rgba(0,180,216,.06);
+    font-family:'JetBrains Mono',monospace; flex-shrink:0;
+  }
+  .info-val{
+    padding:.6rem 1rem; font-size:.85rem; color:var(--white);
+    font-family:'JetBrains Mono',monospace; word-break:break-all;
+  }
+
+  /* Port table */
+  .port-table{
+    width:100%; border-collapse:collapse;
+    background:var(--card); border-radius:10px;
+    overflow:hidden; margin-bottom:1.5rem;
+  }
+  .port-table th{
+    background:var(--dark2); padding:.6rem 1rem;
+    font-size:.7rem; text-transform:uppercase; letter-spacing:1px;
+    color:var(--gray); text-align:left; font-weight:600;
+  }
+  .port-table td{
+    padding:.5rem 1rem; font-size:.82rem;
+    font-family:'JetBrains Mono',monospace;
+    border-bottom:1px solid var(--dark2);
+  }
+  .port-table tr:last-child td{border-bottom:none;}
+  .port-table tr:hover td{background:rgba(255,255,255,.03);}
+  .open{color:var(--green); font-weight:600;}
+  .closed{color:var(--gray);}
+
+  /* Tech chips */
+  .chips{display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.5rem;}
+  .chip{
+    padding:.3rem .9rem; border-radius:20px; font-size:.8rem;
+    font-weight:600; background:rgba(0,180,216,.15);
+    border:1px solid rgba(0,180,216,.4); color:var(--cyan);
+  }
+
+  /* Security headers */
+  .sec-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:.5rem; margin-bottom:1.5rem;
+  }
+  .sec-item{
+    display:flex; align-items:center; gap:.6rem;
+    background:var(--card); border:1px solid var(--dark2);
+    border-radius:8px; padding:.5rem .75rem;
+  }
+  .sec-dot{
+    width:10px; height:10px; border-radius:50%; flex-shrink:0;
+  }
+  .sec-dot.ok{background:var(--green);}
+  .sec-dot.miss{background:var(--red);}
+  .sec-name{font-size:.8rem; font-family:'JetBrains Mono',monospace;}
+  .sec-status{
+    margin-left:auto; font-size:.65rem; font-weight:700;
+    letter-spacing:.5px;
+  }
+  .sec-status.ok{color:var(--green);}
+  .sec-status.miss{color:var(--red);}
+
+  /* Error box */
+  .error-box{
+    background:rgba(230,57,70,.1); border:1px solid var(--red);
+    border-radius:10px; padding:1rem 1.2rem; color:var(--red);
+    font-family:'JetBrains Mono',monospace; font-size:.85rem;
+    margin-bottom:1rem;
+  }
+
+  /* Footer */
+  footer{
+    text-align:center; padding:1.5rem;
+    border-top:1px solid var(--dark2);
+    color:var(--gray); font-size:.8rem;
+  }
+  footer span{color:var(--cyan);}
+
+  /* Responsive */
+  @media(max-width:600px){
+    .hero h1{font-size:2rem;}
+    .input-row{flex-wrap:wrap;}
+    .scan-btn{width:100%;}
+    .info-key{min-width:110px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:.5rem;">
+    <div class="logo">NET<span>PROBE</span></div>
+    <div class="badge">v2.0</div>
+  </div>
+  <div class="author">By <span>Sumeer Singh Rana</span></div>
+</header>
+
+<div class="hero">
+  <h1>NETPROBE</h1>
+  <p>Python-based Network & Web Scanner — NSE Script Project &nbsp;|&nbsp; Metbrains 2026</p>
+
+  <div class="tabs">
+    <div class="tab host active" onclick="setMode('host')">⬡ &nbsp;HOST SCAN</div>
+    <div class="tab web"        onclick="setMode('web')">◎ &nbsp;WEB SCAN</div>
+  </div>
+
+  <div class="scanner">
+    <div class="input-row">
+      <span>$</span>
+      <input id="target" type="text" placeholder="192.168.1.1  or  example.com" autocomplete="off" onkeydown="if(event.key==='Enter')startScan()"/>
+      <button class="scan-btn host-btn" id="scanBtn" onclick="startScan()">SCAN →</button>
+    </div>
+    <div class="quick" id="quickTargets">
+      <span>Quick:</span>
+      <span class="quick-btn" onclick="setTarget('8.8.8.8')">8.8.8.8</span>
+      <span class="quick-btn" onclick="setTarget('192.168.1.1')">192.168.1.1</span>
+      <span class="quick-btn" onclick="setTarget('scanme.nmap.org')">scanme.nmap.org</span>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p id="loadingText">Scanning target...</p>
+</div>
+
+<div class="results" id="results"></div>
+
+<footer>
+  NETPROBE v2.0 &nbsp;|&nbsp; Built by <span>Sumeer Singh Rana</span> &nbsp;|&nbsp;
+  Kali Linux · Python 3 · Scapy · Requests &nbsp;|&nbsp;
+  For authorized use only
+</footer>
+
+<script>
+let currentMode = 'host';
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab.' + mode).classList.add('active');
+  const btn = document.getElementById('scanBtn');
+  const inp = document.getElementById('target');
+  const quick = document.getElementById('quickTargets');
+  if (mode === 'host') {
+    btn.className = 'scan-btn host-btn';
+    inp.placeholder = '192.168.1.1  or  hostname';
+    quick.innerHTML = '<span>Quick:</span>' +
+      '<span class="quick-btn" onclick="setTarget(\'8.8.8.8\')">8.8.8.8</span>' +
+      '<span class="quick-btn" onclick="setTarget(\'192.168.1.1\')">192.168.1.1</span>' +
+      '<span class="quick-btn" onclick="setTarget(\'scanme.nmap.org\')">scanme.nmap.org</span>';
+  } else {
+    btn.className = 'scan-btn web-btn';
+    inp.placeholder = 'https://example.com  or  domain.com';
+    quick.innerHTML = '<span>Quick:</span>' +
+      '<span class="quick-btn" onclick="setTarget(\'https://google.com\')">google.com</span>' +
+      '<span class="quick-btn" onclick="setTarget(\'https://github.com\')">github.com</span>' +
+      '<span class="quick-btn" onclick="setTarget(\'https://example.com\')">example.com</span>';
+  }
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
+}
+
+function setTarget(t) {
+  document.getElementById('target').value = t;
+}
+
+async function startScan() {
+  const target = document.getElementById('target').value.trim();
+  if (!target) return;
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('loading').style.display = 'block';
+  const msgs = currentMode === 'host'
+    ? ['Resolving hostname...','Sending ping probe...','Scanning ports...','Grabbing banners...','Finalising report...']
+    : ['Fetching page...','Checking SSL certificate...','Running WHOIS lookup...','Detecting technologies...','Analysing headers...'];
+  let mi = 0;
+  const lt = setInterval(() => {
+    document.getElementById('loadingText').textContent = msgs[mi++ % msgs.length];
+  }, 1800);
+  try {
+    const resp = await fetch('/scan/' + currentMode, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({target})
+    });
+    const data = await resp.json();
+    clearInterval(lt);
+    document.getElementById('loading').style.display = 'none';
+    renderResults(data);
+  } catch(e) {
+    clearInterval(lt);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('results').innerHTML = `<div class="error-box">Error: ${e.message}</div>`;
+  }
+}
+
+function row(key, val) {
+  return `<div class="info-row"><div class="info-key">${key}</div><div class="info-val">${val}</div></div>`;
+}
+
+function renderResults(d) {
+  const el = document.getElementById('results');
+  el.style.display = 'block';
+  if (d.error) { el.innerHTML = `<div class="error-box">[-] ${d.error}</div>`; return; }
+
+  let html = '';
+
+  if (currentMode === 'host') {
+    // Stat cards
+    html += `<div class="stat-row">
+      <div class="stat-card"><div class="stat-label">IP Address</div><div class="stat-value">${d.ip}</div></div>
+      <div class="stat-card ${d.alive?'green':''}"><div class="stat-label">Status</div><div class="stat-value ${d.alive?'alive':'dead'}">${d.alive?'ALIVE':'OFFLINE'}</div></div>
+      <div class="stat-card orange"><div class="stat-label">Ping</div><div class="stat-value">${d.ping_ms?d.ping_ms+'ms':'N/A'}</div></div>
+      <div class="stat-card"><div class="stat-label">TTL</div><div class="stat-value">${d.ttl||'N/A'}</div></div>
+      <div class="stat-card purple"><div class="stat-label">Open Ports</div><div class="stat-value">${d.open_ports}</div></div>
+    </div>`;
+    // Host info
+    html += '<div class="section-title">Host Information</div>';
+    html += `<div class="info-grid">
+      ${row('Target', d.target)}${row('IP Address', d.ip)}
+      ${row('Hostname', d.hostname)}${row('OS Estimate', d.os_guess)}
+      ${row('TTL', d.ttl||'N/A')}${row('Date', d.date)}
+      ${row('Time', d.time)}${row('Timezone', d.timezone)}
+    </div>`;
+    // Ports
+    html += '<div class="section-title">Port Scan Results</div>';
+    html += '<table class="port-table"><thead><tr><th>Port</th><th>Service</th><th>Status</th></tr></thead><tbody>';
+    d.ports.forEach(p => {
+      const cls = p.status === 'open' ? 'open' : 'closed';
+      html += `<tr><td style="color:var(--cyan)">${p.port}</td><td>${p.service}</td><td class="${cls}">${p.status.toUpperCase()}</td></tr>`;
+    });
+    html += '</tbody></table>';
+
+  } else {
+    // Web stat cards
+    const sslOk = d.ssl && d.ssl.valid;
+    html += `<div class="stat-row">
+      <div class="stat-card ${d.status_code===200?'green':'orange'}"><div class="stat-label">Status</div><div class="stat-value">${d.status_code}</div></div>
+      <div class="stat-card"><div class="stat-label">Response</div><div class="stat-value">${d.response_ms}ms</div></div>
+      <div class="stat-card ${sslOk?'green':''}"><div class="stat-label">SSL</div><div class="stat-value ${sslOk?'alive':'dead'}">${sslOk?'VALID':'INVALID'}</div></div>
+      <div class="stat-card purple"><div class="stat-label">Links</div><div class="stat-value">${d.links}</div></div>
+      <div class="stat-card orange"><div class="stat-label">Scripts</div><div class="stat-value">${d.scripts}</div></div>
+    </div>`;
+    // Page info
+    html += '<div class="section-title">Page Information</div>';
+    html += `<div class="info-grid">
+      ${row('Title', d.title)}${row('Description', d.description)}
+      ${row('Final URL', d.final_url)}${row('Domain', d.domain)}
+      ${row('IP Address', d.ip)}${row('Server', d.server)}
+      ${row('Content-Type', d.content_type)}${row('Response Time', d.response_ms+'ms')}
+    </div>`;
+    // Technologies
+    if (d.technologies && d.technologies.length > 0) {
+      html += '<div class="section-title">Technologies Detected</div>';
+      html += '<div class="chips">' + d.technologies.map(t=>`<div class="chip">${t}</div>`).join('') + '</div>';
+    }
+    // SSL
+    html += '<div class="section-title">SSL Certificate</div>';
+    html += '<div class="info-grid">';
+    if (d.ssl.valid) {
+      html += row('Valid', '✓ YES') + row('Common Name', d.ssl.common_name) +
+              row('Issuer', d.ssl.issuer) + row('Valid From', d.ssl.not_before) +
+              row('Valid Until', d.ssl.not_after);
+    } else {
+      html += row('Valid', '✗ NO — ' + (d.ssl.error||'Unknown'));
+    }
+    html += '</div>';
+    // WHOIS
+    html += '<div class="section-title">WHOIS / Domain Info</div>';
+    html += '<div class="info-grid">';
+    if (d.whois.error) {
+      html += row('Error', d.whois.error);
+    } else {
+      html += row('Registrar', d.whois.registrar) + row('Organization', d.whois.org) +
+              row('Country', d.whois.country) + row('Created', d.whois.created) +
+              row('Expires', d.whois.expires);
+    }
+    html += '</div>';
+    // Page stats
+    html += '<div class="section-title">Page Statistics</div>';
+    html += `<div class="info-grid">
+      ${row('Links', d.links)}${row('Images', d.images)}
+      ${row('Scripts', d.scripts)}${row('Forms', d.forms)}
+    </div>`;
+    // Security headers
+    html += '<div class="section-title">HTTP Security Headers</div>';
+    html += '<div class="sec-grid">';
+    Object.entries(d.security_headers).forEach(([h, ok]) => {
+      html += `<div class="sec-item">
+        <div class="sec-dot ${ok?'ok':'miss'}"></div>
+        <div class="sec-name">${h}</div>
+        <div class="sec-status ${ok?'ok':'miss'}">${ok?'PRESENT':'MISSING'}</div>
+      </div>`;
+    });
+    html += '</div>';
+    html += '<div class="section-title">Scan Info</div>';
+    html += `<div class="info-grid">${row('Scanned At', d.scanned_at)}</div>`;
+  }
+
+  el.innerHTML = html;
+  el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+</body>
+</html>
